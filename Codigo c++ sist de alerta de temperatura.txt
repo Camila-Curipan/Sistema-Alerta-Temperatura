@@ -1,0 +1,121 @@
+
+template<class T> inline Print &operator <<(Print &obj, T arg) {
+  obj.print(arg);
+  return obj;
+}
+#include <DHT.h>
+#include <EasyBuzzer.h>
+#include "CTBot.h"
+
+#define DHTPIN 32
+#define DHTTYPE DHT11
+CTBot miBot;
+
+DHT dht(DHTPIN,DHTTYPE);
+
+const char* ssid="HW2019y9";
+const char* password="12341234";
+const String token="6310965347:AAHKZgLb0qjb3JQ_o9j5wNUgX_TUWpcXx34";
+
+int pinBuzzer=33;//pinbuzzer
+//int LM=34;//el sensor temperatura
+float temperatura=0;//variable auxiliar 
+
+
+//variables de envio de mensaje
+float tiempo = 0;
+int id = 0;
+char mensaje[50];
+
+void setup() {
+  
+  Serial.begin(115200);
+
+  Serial.println("Iniciando Bot de Telegram");
+
+  miBot.wifiConnect(ssid, password);
+
+  miBot.setTelegramToken(token);
+  
+Serial.println("conectado...Iniciando prueba de conexion");
+
+  if (miBot.testConnection()) {
+    Serial.println("\n Conectado");
+  }
+  else {
+    Serial.println("\n Problemas Auxilio");
+  }
+
+  dht.begin();
+
+  EasyBuzzer.setPin(pinBuzzer);
+
+}
+
+void loop() {
+
+  delay(2000);
+
+float humedad= dht.readHumidity();
+float t= dht.readTemperature();
+
+if(isnan(humedad)|| isnan(t)){
+  Serial.println(F("No se pudo leer el sensor"));
+  return;
+  }
+
+
+ //ver temperatura en consola
+Serial.print("temperatura en celcius: ");
+Serial.print(t);
+
+//
+Serial.print(" humedad en el ambiente: ");
+Serial.println(humedad);
+
+//funcion para guardar el float en cadena de char y usarla en ctbot
+char buffer[50];
+sprintf(buffer,"estas a %6.2f °C a una humedad de %6.2f",t,humedad);
+
+
+TBMessage msg;
+//inicializar usuario del bot obteniendo id a travez de mensaje
+if(CTBotMessageText==miBot.getNewMessage(msg)){
+String reply = (String)"Bienvenido, soy tu bot de alerta de temperatura "+ buffer;
+miBot.sendMessage(msg.sender.id,reply);
+
+}
+
+//cambiar valores comparativos de c para entrega final
+  if(t==50.00){//cuando la temperatura es igual o sobre 60°
+     
+      EasyBuzzer.update();
+      EasyBuzzer.beep(
+        1000    // Frequency in hertz(HZ).
+      );
+      String reply = (String)"Temperatura peligrosa en el lugar\n"+ buffer+(String)"\nevacúa por tu seguridad";
+      miBot.sendMessage(msg.sender.id,reply);
+  }
+
+
+
+  else if(t>=30.00 && t<49.00){//cuando la t° es igual o mayor a 39 y menor que 60
+ 
+      EasyBuzzer.update();
+      EasyBuzzer.beep(
+        800    // Frequency in hertz(HZ).
+            );  
+     String reply =(String)"Temperatura dañina para tu salud "+ buffer+(String)"\nventila, hidratate y/o evacúa el lugar";
+     miBot.sendMessage(msg.sender.id,reply);
+    }
+
+
+    
+   else if (t<29.00){
+         EasyBuzzer.stopBeep();//detener el buzzer
+       
+          }
+
+          
+
+}
